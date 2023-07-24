@@ -1,10 +1,10 @@
-# ChatGPT-web
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/Niek/chatgpt-web/pages.yml?style=flat-square)](https://github.com/Niek/chatgpt-web/actions/workflows/pages.yml)
-[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat-square)](https://standardjs.com)
-[![GitHub](https://img.shields.io/github/license/Niek/chatgpt-web)](/LICENSE)
-[![All Contributors](https://img.shields.io/github/all-contributors/Niek/chatgpt-web?color=ee8449&style=flat-square)](#contributors)
+# ChatGPT-web (GLaDOSPT)
 
-## **URL**: https://niek.github.io/chatgpt-web/
+Original available at [Niek/chatgpt-web](https://github.com/Niek/chatgpt-web)
+
+PoC for having [glados-tts](https://github.com/Griefed/glados-tts) speak the ChatGPT responses.
+
+Make sure to deploy an instance of [glados-tts](https://github.com/Griefed/glados-tts) to have GLaDOS speaking.
 
 ![Screenshot of ChatGPT-web](.github/screenshot.png)
 

@@ -1,47 +1,46 @@
 <script lang="ts">
-  import {
-    saveChatStore,
-    chatsStorage,
-    addMessage,
-    updateChatSettings,
-    checkStateChange,
-    showSetChatSettings,
-    submitExitingPromptsNow,
-    continueMessage,
-    getMessage,
-    currentChatMessages,
-    setCurrentChat,
-    currentChatId
-  } from './Storage.svelte'
-  import {
-    type Message,
-    type Chat
-  } from './Types.svelte'
-  import Prompts from './Prompts.svelte'
-  import Messages from './Messages.svelte'
-  import { restartProfile } from './Profiles.svelte'
-  import { afterUpdate, onMount, onDestroy } from 'svelte'
-  import Fa from 'svelte-fa/src/fa.svelte'
-  import {
-    faArrowUpFromBracket,
-    faPaperPlane,
-    faGear,
-    faPenToSquare,
-    faMicrophone,
-    faLightbulb,
-    faCommentSlash,
-    faCircleCheck
-  } from '@fortawesome/free-solid-svg-icons/index'
-  import { v4 as uuidv4 } from 'uuid'
-  import { getPrice } from './Stats.svelte'
-  import { autoGrowInputOnEvent, scrollToBottom, sizeTextElements } from './Util.svelte'
-  import ChatSettingsModal from './ChatSettingsModal.svelte'
-  import Footer from './Footer.svelte'
-  import { openModal } from 'svelte-modals'
-  import PromptInput from './PromptInput.svelte'
-  import { ChatRequest } from './ChatRequest.svelte'
+    import {
+        addMessage,
+        chatsStorage,
+        checkStateChange,
+        continueMessage,
+        currentChatId,
+        currentChatMessages,
+        getMessage,
+        saveChatStore,
+        setCurrentChat,
+        showSetChatSettings,
+        submitExitingPromptsNow,
+        updateChatSettings
+    } from './Storage.svelte'
+    import { getEndpointGLaDOS } from './ApiUtil.svelte'
+    import {type Chat, type Message} from './Types.svelte'
+    import Prompts from './Prompts.svelte'
+    import Messages from './Messages.svelte'
+    import {restartProfile} from './Profiles.svelte'
+    import {afterUpdate, onDestroy, onMount} from 'svelte'
+    import Fa from 'svelte-fa/src/fa.svelte'
+    import cors from 'cors'
+    import {
+        faArrowUpFromBracket,
+        faCircleCheck,
+        faCommentSlash,
+        faGear,
+        faLightbulb,
+        faMicrophone,
+        faPaperPlane,
+        faPenToSquare
+    } from '@fortawesome/free-solid-svg-icons/index'
+    import {v4 as uuidv4} from 'uuid'
+    import {getPrice} from './Stats.svelte'
+    import {autoGrowInputOnEvent, scrollToBottom, sizeTextElements} from './Util.svelte'
+    import ChatSettingsModal from './ChatSettingsModal.svelte'
+    import Footer from './Footer.svelte'
+    import {openModal} from 'svelte-modals'
+    import PromptInput from './PromptInput.svelte'
+    import {ChatRequest} from './ChatRequest.svelte'
 
-  export let params = { chatId: '' }
+    export let params = { chatId: '' }
   const chatId: number = parseInt(params.chatId)
 
   let chatRequest = new ChatRequest()
@@ -49,6 +48,7 @@
   let recognition: any = null
   let recording = false
   let lastSubmitRecorded = false
+  let audio: any
 
   $: chat = $chatsStorage.find((chat) => chat.id === chatId) as Chat
   $: chatSettings = chat?.settings
@@ -85,7 +85,7 @@
       }
     })
   }
-  
+
   $: onStateChange($checkStateChange, $showSetChatSettings, $submitExitingPromptsNow, $continueMessage)
 
   const afterChatLoad = (...args:any) => {
@@ -190,12 +190,17 @@
     focusInput()
   }
 
-  const ttsStart = (text:string, recorded:boolean) => {
-    // Use TTS to read the response, if query was recorded
-    if (recorded && 'SpeechSynthesisUtterance' in window) {
-      const utterance = new SpeechSynthesisUtterance(text)
-      window.speechSynthesis.speak(utterance)
+  const ttsStart = async (text: string) => {
+    let formData = new FormData()
+    formData.append('text',text)
+    const fetchOptions = {
+      method: 'POST',
+      body: formData,
     }
+      const reply = await fetch(getEndpointGLaDOS(),fetchOptions)
+      const blob = await reply.blob()
+      audio.src = URL.createObjectURL(blob)
+      audio.play()
   }
 
   const ttsStop = () => {
@@ -221,7 +226,7 @@
     if (chatRequest.updating) return
 
     lastSubmitRecorded = recorded
-  
+
     if (!skipInput) {
       chat.sessionStarted = true
       saveChatStore()
@@ -232,11 +237,11 @@
       } else if (!fillMessage && $currentChatMessages.length && $currentChatMessages[$currentChatMessages.length - 1].finish_reason === 'length') {
         fillMessage = $currentChatMessages[$currentChatMessages.length - 1]
       }
-  
+
       // Clear the input value
       input.value = ''
       input.blur()
-  
+
       // Resize back to single line height
       input.style.height = 'auto'
     }
@@ -257,8 +262,12 @@
       })
       await response.promiseToFinish()
       const message = response.getMessages()[0]
-      if (message) {
-        ttsStart(message.content, recorded)
+      const name = response.chat.settings.characterName + ': '
+      if (message.content.startsWith(name)) {
+        let tts = message.substring(name.length)
+        ttsStart(tts)
+      } else {
+        ttsStart(message.content)
       }
     } catch (e) {
       console.error(e)
@@ -331,6 +340,9 @@
   }
 
 </script>
+<audio bind:this={audio}>
+    <source class="track" src="" type="audio/x-wav" />
+</audio>
 {#if chat}
 <ChatSettingsModal chatId={chatId} bind:show={showSettingsModal} />
 <div class="chat-page" style="--running-totals: {Object.entries(chat.usage || {}).length}">
